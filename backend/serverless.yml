@@ -1,14 +1,14 @@
-# "org" ensures this Service is used with the correct Serverless Framework Access Key.
 org: alexs29
-# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
 app: agendazap
-# "service" is the name of this project. This will also be added to your AWS resource names.
 service: agendazap-backend
 
 provider:
   name: aws
   runtime: nodejs20.x
-  stage: ${opt:stage, 'dev'} # Define o stage padrão como 'dev' caso não seja especificado
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  httpApi:
+    cors: true
   iam:
     role:
       statements:
@@ -22,50 +22,165 @@ provider:
             - dynamodb:DeleteItem
           Resource:
             - Fn::GetAtt: [UsersTable, Arn]
-            - Fn::GetAtt: [AgendazapTable, Arn]
-  environment:
-    USERS_TABLE: ${self:custom.tableName}
-    AGENDAZAP_TABLE: AgendazapTable-${self:provider.stage} # Adiciona a tabela AgendazapTable como variável de ambiente
+            - Fn::Join:
+              - ""
+              - - Fn::GetAtt: [ UsersTable, Arn ]
+                - "/index/EmailIndex"
+            - Fn::GetAtt: [surveyStates, Arn]
+            - Fn::GetAtt: [PatientsTable, Arn]
 
-custom:
-  tableName: "users-table-${self:provider.stage}"
+  environment:
+    USERS_TABLE: users-table-${self:provider.stage}
+    PATIENTS_TABLE: PatientsTable-${self:provider.stage}
+    JWT_SECRET: dev_jwt_secret
+    GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+    GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET}
+    ACCOUNT_SID_TWILIO: ${env:ACCOUNT_SID_TWILIO}
+    AUTH_TOKEN_TWILIO: ${env:AUTH_TOKEN_TWILIO}
 
 functions:
   api:
     handler: handler.app
     events:
-      - httpApi: "*" # Considerar especificar os endpoints mais detalhadamente
-    environment:
-      USERS_TABLE: ${self:custom.tableName}
-      AGENDAZAP_TABLE: AgendazapTable-${self:provider.stage}
+      - httpApi: "*"
+
+  checkEvents:
+    handler: handler.checkEvents
+    events:
+      - schedule:
+          rate: rate(1 day)
+      - http:
+          path: checkEvents
+          method: get
+
+  googleCalendarAuth:
+    handler: handler.googleCalendarAuth
+    events:
+      - http:
+          path: google/auth
+          method: get
+
+  oauth2callback:
+    handler: handler.oauth2callback
+    events:
+      - http:
+          path: oauth2callback
+          method: get
+
+  createEvent:
+    handler: handler.createEvent
+    events:
+      - http:
+          path: events
+          method: post
+
+  listEvents:
+    handler: handler.listEvents
+    events:
+      - http:
+          path: events
+          method: get
+
+  updateEvent:
+    handler: handler.updateEvent
+    events:
+      - http:
+          path: events/{id}
+          method: put
+
+  deleteEvent:
+    handler: handler.deleteEvent
+    events:
+      - http:
+          path: events/{id}
+          method: delete
+
+  sendConfirmation2Days:
+    handler: handler.sendConfirmation2Days
+    events:
+      - http:
+          path: confirmation2days/send
+          method: get
+
+  sendConfirmation7Days:
+    handler: handler.sendConfirmation7Days
+    events:
+      - http:
+          path: confirmation7days/send
+          method: get
+
+  sendSupportNotifications:
+    handler: handler.sendSupportNotifications
+    events:
+      - http:
+          path: support/send
+          method: get
+
+  demoReply:
+    handler: handler.demoReply
+    events:
+      - http:
+          path: demo-reply
+          method: post
 
 resources:
   Resources:
     UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
+        TableName: users-table-${self:provider.stage}
         AttributeDefinitions:
           - AttributeName: userId
+            AttributeType: S
+          - AttributeName: email
             AttributeType: S
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
-        TableName: ${self:custom.tableName}
-    AgendazapTable:
+
+    PatientsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: AgendazapTable-${self:provider.stage}
+        TableName: PatientsTable-${self:provider.stage}
         AttributeDefinitions:
           - AttributeName: PK
             AttributeType: S
           - AttributeName: SK
+            AttributeType: S
+          - AttributeName: telefone_whatsapp
             AttributeType: S
         KeySchema:
           - AttributeName: PK
             KeyType: HASH
           - AttributeName: SK
             KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: ByTelefone
+            KeySchema:
+              - AttributeName: telefone_whatsapp
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    surveyStates:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: surveyStates
+        AttributeDefinitions:
+          - AttributeName: phone
+            AttributeType: S
+        KeySchema:
+          - AttributeName: phone
+            KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 
 plugins:
