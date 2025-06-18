@@ -12,10 +12,28 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)}>
-        <SidebarItem icon={<Home size={20}/>} label="Dashboard" collapsed={collapsed} />
-        <SidebarItem icon={<Users size={20}/>} label="Pacientes" collapsed={collapsed} />
-        <SidebarItem icon={<Calendar size={20}/>} label="Eventos" collapsed={collapsed} />
-        <SidebarItem icon={<Settings size={20}/>} label="Configuração" collapsed={collapsed} />
+        <SidebarItem
+          icon={<Home size={20} />}
+          label="Dashboard"
+          href="/dashboard"
+          collapsed={collapsed}
+        />
+        <SidebarItem
+          icon={<Users size={20} />}
+          label="Pacientes"
+          collapsed={collapsed}
+        />
+        <SidebarItem
+          icon={<Calendar size={20} />}
+          label="Eventos"
+          href="/eventos/novo"
+          collapsed={collapsed}
+        />
+        <SidebarItem
+          icon={<Settings size={20} />}
+          label="Configuração"
+          collapsed={collapsed}
+        />
         <SidebarItem icon={<Zap size={20}/>} label="Google Calendar" collapsed={collapsed} />
         <SidebarItem icon={<RotateCw size={20}/>} label="Confirmações 2d" collapsed={collapsed} />
         <SidebarItem icon={<RotateCw size={20}/>} label="Suporte" collapsed={collapsed} />
