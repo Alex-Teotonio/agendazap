@@ -1,5 +1,6 @@
 // components/ui/Sidebar.tsx
 import { FC, ReactNode } from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,12 +24,16 @@ export const Sidebar: FC<SidebarProps> = ({ collapsed = false, onToggle, childre
 interface SidebarItemProps {
   icon: ReactNode;
   label: string;
+  href?: string;
   collapsed?: boolean;
 }
 
-export const SidebarItem: FC<SidebarItemProps> = ({ icon, label, collapsed = false }) => (
-  <div className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+export const SidebarItem: FC<SidebarItemProps> = ({ icon, label, href = "#", collapsed = false }) => (
+  <Link
+    href={href}
+    className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
+  >
     <div className="text-xl">{icon}</div>
     {!collapsed && <span className="ml-3 text-sm font-medium">{label}</span>}
-  </div>
+  </Link>
 );
