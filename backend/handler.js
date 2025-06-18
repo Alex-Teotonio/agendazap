@@ -23,6 +23,25 @@ app.post("/register", async (req, res) => {
     return res.status(400).json({ message: "Dados incompletos." });
   }
 
+  // Checa se o email já está cadastrado
+  try {
+    const existing = await dynamo
+      .scan({
+        TableName: usersTable,
+        FilterExpression: "email = :email",
+        ExpressionAttributeValues: { ":email": email },
+        ProjectionExpression: "userId",
+      })
+      .promise();
+
+    if (existing.Items && existing.Items.length > 0) {
+      return res.status(409).json({ message: "Email já está em uso." });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Erro ao verificar usuário." });
+  }
+
   const userId = uuidv4();
   const timestamp = new Date().toISOString();
 
@@ -39,7 +58,6 @@ app.post("/register", async (req, res) => {
       created_at: timestamp,
       updated_at: timestamp,
     },
-    ConditionExpression: "attribute_not_exists(email)",
   };
 
   try {
